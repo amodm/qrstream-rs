@@ -1,0 +1,27 @@
+[package]
+name = "qrstream"
+version = "0.1.0"
+authors = ["Amod Malviya @amodm"]
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "A secure no-persistence way to convert confidential data into QR codes, and vice-versa"
+readme = "README.md"
+homepage = "https://github.com/amodm/qrstream-rs"
+repository = "https://github.com/amodm/qrstream-rs"
+keywords = ["qr", "qrstream"]
+categories = ["command-line-utilities"]
+
+[dependencies]
+aes-gcm = "0.10.2"
+base64 = "0.21.2"
+clap = { version = "4.3.19", features = ["cargo", "derive"] }
+hyper = { version = "0.14.27", features = ["server", "tcp", "http1", "http2"] }
+image = "0.24.6"
+lazy_static = "1.4.0"
+libc = "0.2.147"
+pbkdf2 = { version = "0.12.2", features = ["hmac", "parallel", "sha2"] }
+qr_code = "2.0.0"
+rqrr = "0.6.0"
+sha2 = "0.10.7"
+tokio = { version = "1.29.1", features = ["rt", "macros", "net"] }
+webbrowser = "0.8.10"

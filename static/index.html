@@ -1,0 +1,153 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>QR Stream</title>
+        <script src="https://unpkg.com/html5-qrcode"></script>
+    </head>
+    <body>
+        <div id="qr-reader" style="width:500px"></div>
+        <div id="qr-reader-results"></div>
+        <div id="qr-error-msg" style="color: red; font-weight: bold; display: none;"></div>
+        <div id="qr-source" style="padding-top: 0.5rem; font-size: 0.5rem;"></div>
+        <script type="text/javascript">
+            var resultContainer = document.getElementById('qr-reader-results');
+            var srcContainer = document.getElementById('qr-source');
+            var errorMsgContainer = document.getElementById('qr-error-msg');
+            var lastResult = '';
+            var parts = [];
+            var totalParts = 0;
+            var dataVersion = 0;
+
+            function setError(error) {
+                errorMsgContainer.innerText = error;
+                errorMsgContainer.style.display = "block";
+            }
+
+            function resetError() {
+                errorMsgContainer.innerText = "";
+                errorMsgContainer.style.display = "none";
+            }
+
+            function submitToServer() {
+                fetch("/data", {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "text/plain"
+                    },
+                    body: [...Array(totalParts).keys()].map((i) => parts[i]).join("\n")
+                }).then((response) => {
+                    if (response.ok) {
+                        resultContainer.innerHTML = "Done!";
+                    } else {
+                        setError("Server error");
+                    }
+                }).catch((error) => {
+                    setError(error);
+                });
+            }
+
+            function onScanSuccess(decodedText, decodedResult) {
+                if (decodedText !== lastResult) {
+                    lastResult = decodedText;
+                    if (decodedText.startsWith(`${MAGIC_PREFIX}/`)) {
+                        var colpos = decodedText.indexOf(";");
+                        if (colpos < 0) {
+                            setError("Invalid format magic");
+                            return;
+                        }
+                        let version = parseInt(decodedText.substring(MAGIC_PREFIX.length + 1, colpos));
+                        if (isNaN(version) || version > CURRENT_VERSION) {
+                            setError("Invalid format version");
+                            return;
+                        }
+                        var currentPart = 0;
+                        while (colpos < decodedText.length) {
+                            var nextpos = decodedText.indexOf(";", colpos + 1);
+                            if (nextpos < 0) {
+                                nextpos = decodedText.length;
+                            }
+                            let part = decodedText.substring(colpos + 1, nextpos);
+                            if (part.startsWith("p=")) {
+                                let value = parseInt(part.substring(2), 16);
+                                if (isNaN(value)) {
+                                    setError("Invalid format part info");
+                                    return;
+                                }
+                                totalParts = value & 0x0f;
+                                currentPart = ((value >> 4) & 0x0f) - 1;
+                            } else if (part.startsWith("t=")) {
+                                parts[currentPart] = decodedText;
+                            }
+                            colpos = nextpos;
+                        }
+                        var isComplete = totalParts > 0;
+                        for (var i = 0; i < totalParts; i++) {
+                            if (!parts[i]) {
+                                isComplete = false;
+                                break;
+                            }
+                        }
+                        if (isComplete) {
+                            // submit to server
+                            resultContainer.innerHTML = "Submitting...";
+                            submitToServer();
+                        } else {
+                            // indicate progress
+                            resultContainer.innerHTML = [...Array(totalParts).keys()].map((i) => `<span style="font-weight: bold; font-size: 1.5rem; padding-right: 1rem; color: ${parts[i] ? "green" : "red"}">${parts[i] ? '✓' : '✕'}</span>`).join("");
+                        }
+                    } else {
+                        setError("Unsupported QR code");
+                    }
+                }
+            }
+
+            if (!("BarcodeDetector" in window)) {
+                function scriptLoaded() {
+                    let readerContainer = document.createElement('div');
+                    resultContainer.before(readerContainer);
+
+                    var html5QrcodeScanner = new Html5QrcodeScanner(
+                        "qr-reader", { fps: 10, qrbox: 250 });
+                    html5QrcodeScanner.render(onScanSuccess);
+                }
+
+                srcContainer.innerText = "Source: html5-qrcode";
+                let html5QrCodeScript = document.createElement("script");
+                html5QrCodeScript.setAttribute("src", "https://unpkg.com/html5-qrcode");
+                html5QrCodeScript.setAttribute("async", "true");
+                html5QrCodeScript.addEventListener("load", scriptLoaded, false);
+                document.body.appendChild(html5QrCodeScript);
+            } else {
+                srcContainer.innerText = "Source: BarcodeDetector API";
+                const barcodeDetector = new BarcodeDetector({ formats: ['qr_code'] });
+
+                window.onload = async () => {
+                    const mediaStream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: 'environment' },
+                    });
+                    const video = document.createElement('video');
+                    video.srcObject = mediaStream;
+                    video.autoplay = true;
+                    resultContainer.before(video);
+
+                    var prevRenderTime = Date.now();
+                    (function renderLoop() {
+                        requestAnimationFrame(renderLoop);
+                        let timeSincePrevDetection = Date.now() - prevRenderTime;
+                        if (timeSincePrevDetection > 100) { // we detect once every 100 ms
+                            prevRenderTime = Date.now();
+                            barcodeDetector
+                                .detect(video)
+                                .then((barcodes) => {
+                                    barcodes.forEach((barcode) => {
+                                        onScanSuccess(barcode.rawValue, barcode);
+                                    });
+                                })
+                                .catch(console.error);
+                        }
+                    })();
+                };
+            }
+        </script>
+    </body>
+</html>
