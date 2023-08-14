@@ -13,15 +13,15 @@ use std::io::Read;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
-    let mut options = KeyStreamOptions::parse();
+    let mut options = QRStreamOptions::parse();
     options.key = options
         .password
         .as_ref()
         .map(|x| x.get_key().unwrap_or_exit());
     let result = match &options.command {
-        KeyStreamCommand::Encode(_) => encode::encode(&options).await,
-        KeyStreamCommand::Decode => decode::decode(&options).await,
-        KeyStreamCommand::ShowKey => {
+        QRStreamCommand::Encode(_) => encode::encode(&options).await,
+        QRStreamCommand::Decode => decode::decode(&options).await,
+        QRStreamCommand::ShowKey => {
             show_key(options.key.as_ref().map(|k| k.as_ref()));
             Ok(())
         }
@@ -42,7 +42,7 @@ type ClapResult<T> = std::result::Result<T, clap::Error>;
 
 #[derive(Debug, Parser)]
 #[command(author, version, about, long_about = None)]
-struct KeyStreamOptions {
+struct QRStreamOptions {
     #[arg(short, long, help = "Input source (stdin | camera | env:<varname> | <file>)", default_value = "stdin", value_parser = InputSource::parse)]
     input: InputSource,
 
@@ -53,12 +53,12 @@ struct KeyStreamOptions {
     key: Option<[u8; 32]>,
 
     #[command(subcommand)]
-    command: KeyStreamCommand,
+    command: QRStreamCommand,
 }
 
-impl KeyStreamOptions {
+impl QRStreamOptions {
     fn encode_options(&self) -> &EncodeOptions {
-        if let KeyStreamCommand::Encode(options) = &self.command {
+        if let QRStreamCommand::Encode(options) = &self.command {
             options
         } else {
             panic!("encode options requested for non-encode command")
@@ -158,7 +158,7 @@ impl PasswordSource {
             Self::Key(key) => return Ok(key.to_owned()),
             Self::Value(value) => value.to_owned(),
         };
-        let salt = KEYSTREAM_MAGIC.as_bytes();
+        let salt = QRSTREAM_MAGIC.as_bytes();
         let num_iterations = 600_000;
         let mut key = [0u8; 32];
         pbkdf2_hmac::<Sha256>(password.as_bytes(), salt, num_iterations, &mut key);
@@ -167,7 +167,7 @@ impl PasswordSource {
 }
 
 #[derive(Debug, Subcommand)]
-enum KeyStreamCommand {
+enum QRStreamCommand {
     Encode(EncodeOptions),
     Decode,
     ShowKey,
@@ -219,5 +219,8 @@ fn parse_ec_level(s: &str) -> ClapResult<qr_code::EcLevel> {
     }
 }
 
-pub(crate) const KEYSTREAM_MAGIC: &str = "KYST";
-pub(crate) const CURRENT_VERSION: u8 = 1;
+/// Magic string to identify a QR stream
+pub(crate) const QRSTREAM_MAGIC: &str = "QRST";
+
+/// Current version of QR stream serialized format
+pub(crate) const QRSTREAM_VERSION: u8 = 1;

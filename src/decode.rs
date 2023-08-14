@@ -1,5 +1,5 @@
 use crate::error::{err_invalid_input, err_value_validation};
-use crate::{KeyStreamOptions, CURRENT_VERSION, KEYSTREAM_MAGIC};
+use crate::{QRStreamOptions, QRSTREAM_MAGIC, QRSTREAM_VERSION};
 
 use super::error::Result;
 
@@ -11,7 +11,7 @@ use aes_gcm::{
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use std::io::Write;
 
-pub(crate) async fn decode(options: &super::KeyStreamOptions) -> Result<()> {
+pub(crate) async fn decode(options: &super::QRStreamOptions) -> Result<()> {
     let recvd_data = options.input.get_content().await?;
     let is_png = recvd_data.len() > 8 && recvd_data.starts_with(b"\x89PNG\x0d\x0a\x1a\x0a");
     let raw_text = if is_png {
@@ -35,10 +35,10 @@ pub(crate) async fn decode(options: &super::KeyStreamOptions) -> Result<()> {
     decode_data(raw_text, options)
 }
 
-fn decode_data(raw_text: impl AsRef<str>, options: &KeyStreamOptions) -> Result<()> {
+fn decode_data(raw_text: impl AsRef<str>, options: &QRStreamOptions) -> Result<()> {
     let raw_text = raw_text.as_ref();
 
-    if !raw_text.starts_with(KEYSTREAM_MAGIC) {
+    if !raw_text.starts_with(QRSTREAM_MAGIC) {
         Err(err_invalid_input())?;
     }
 
@@ -69,15 +69,15 @@ fn assemble_text(input: &str) -> Result<String> {
     let mut part_list = Vec::<(u8, &str)>::new();
     for line in input.lines() {
         // magic check
-        if !line.starts_with(KEYSTREAM_MAGIC) {
+        if !line.starts_with(QRSTREAM_MAGIC) {
             continue; // we skip lines that don't start with the magic
         }
         let mut colpos = line.find(';').ok_or_else(err_invalid_input)?;
         // version check
-        let version_s = &line[KEYSTREAM_MAGIC.len() + 1..colpos];
+        let version_s = &line[QRSTREAM_MAGIC.len() + 1..colpos];
         match version_s.parse::<u8>() {
             Ok(version) => {
-                if version > CURRENT_VERSION {
+                if version > QRSTREAM_VERSION {
                     Err(err_value_validation("unsupported version"))?;
                 }
             }

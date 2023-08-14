@@ -25,3 +25,7 @@ rqrr = "0.6.0"
 sha2 = "0.10.7"
 tokio = { version = "1.29.1", features = ["rt", "macros", "net"] }
 webbrowser = "0.8.10"
+
+[dev-dependencies]
+assert_cmd = "2.0.12"
+predicates = "3.0.3"

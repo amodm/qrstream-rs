@@ -10,7 +10,7 @@ use hyper::{
 use tokio::sync::mpsc::Sender;
 use tokio::sync::Mutex as AsyncMutex;
 
-use crate::{console, error::Result, CURRENT_VERSION, KEYSTREAM_MAGIC};
+use crate::{console, error::Result, QRSTREAM_MAGIC, QRSTREAM_VERSION};
 
 lazy_static::lazy_static! {
     static ref CAM_DATA_TX: Arc<AsyncMutex<Option<Sender<String>>>> = <_>::default();
@@ -52,8 +52,8 @@ async fn handle_decode_get(request: Request<Body>) -> HyperResult<Response<Body>
         if request.uri() == "/" && request.method() == hyper::Method::GET {
             Response::new(Body::from(
                 SERVER_INDEX_HTML
-                    .replace("MAGIC_PREFIX", &format!("\"{KEYSTREAM_MAGIC}\""))
-                    .replace("CURRENT_VERSION", &format!("{CURRENT_VERSION}")),
+                    .replace("MAGIC_PREFIX", &format!("\"{QRSTREAM_MAGIC}\""))
+                    .replace("CURRENT_VERSION", &format!("{QRSTREAM_VERSION}")),
             ))
         } else if request.uri() == "/data" && request.method() == hyper::Method::PUT {
             let body =

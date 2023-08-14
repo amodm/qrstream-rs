@@ -12,13 +12,13 @@ use std::io::{Cursor, Write};
 
 use crate::{
     error::{io_error, usage_err},
-    OutputFormat, CURRENT_VERSION, KEYSTREAM_MAGIC,
+    OutputFormat, QRSTREAM_MAGIC, QRSTREAM_VERSION,
 };
 
 use super::error::{Error, Result};
-use super::KeyStreamOptions;
+use super::QRStreamOptions;
 
-pub(crate) async fn encode(options: &KeyStreamOptions) -> Result<()> {
+pub(crate) async fn encode(options: &QRStreamOptions) -> Result<()> {
     let input = options.input.get_content().await?;
     let result_list = encode_data(&input, options)?;
 
@@ -35,7 +35,7 @@ pub(crate) async fn encode(options: &KeyStreamOptions) -> Result<()> {
     Ok(())
 }
 
-fn encode_data(u8_data: &[u8], options: &KeyStreamOptions) -> Result<Vec<(String, QrCode)>> {
+fn encode_data(u8_data: &[u8], options: &QRStreamOptions) -> Result<Vec<(String, QrCode)>> {
     let bin_data = if let Some(key) = &options.key {
         let key = Key::<Aes256Gcm>::from_slice(key);
         let cipher = Aes256Gcm::new(key);
@@ -84,7 +84,7 @@ fn encode_data(u8_data: &[u8], options: &KeyStreamOptions) -> Result<Vec<(String
 
 fn encode_to_qr(data: &str, part: u8, total: u8, level: EcLevel) -> Result<(String, QrCode)> {
     let mut output = String::new();
-    output += format!("{}/{};", KEYSTREAM_MAGIC, CURRENT_VERSION).as_str();
+    output += format!("{}/{};", QRSTREAM_MAGIC, QRSTREAM_VERSION).as_str();
     output += format!("p={:x};", ((part + 1) << 4) | (total & 0x0f)).as_str();
     output += "t=";
     output += data;
