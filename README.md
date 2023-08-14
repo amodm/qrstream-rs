@@ -1,4 +1,9 @@
 # qrstream
+
+[![Current Version](https://img.shields.io/crates/v/qrstream.svg)](https://crates.io/crates/qrstream)
+[![License](https://img.shields.io/crates/l/qrstream.svg)](#license)
+![Build](https://github.com/amodm/qrstream-rs/workflows/Build/badge.svg?branch=main)
+
 A secure no-persistence way to convert confidential data into encrypted QR codes, and vice-versa. If the secret doesn't fit into a single QR code, it is automatically split into multiple QR codes (the decoding process knows how to reassemble them later).
 
 ## Encode to QR
